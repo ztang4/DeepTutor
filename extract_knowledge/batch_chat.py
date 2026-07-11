@@ -5,11 +5,11 @@ import csv
 import os
 import time
 
-WS_URL = "ws://192.168.110.167:3782/api/v1/ws"
+WS_URL = "ws://localhost:3782/api/v1/ws"
 TOTAL_TIMEOUT_SECONDS = 600
 
-CSV_FILE = "c:\\Users\\win\\Desktop\\4\\result_tree.csv"
-OUTPUT_DIR = "c:\\Users\\win\\Desktop\\4\\chat_results"
+CSV_FILE = "./data/level4-result_tree.csv"
+OUTPUT_DIR = "./data/chat_results"
 
 
 def read_csv_from_chapter2(csv_path):
