@@ -14,7 +14,8 @@ CPU core and makes retrieval take minutes (issue #552).
 This seam swaps in a FAISS index instead:
 
 * New (and re-indexed) knowledge bases are persisted as a binary FAISS index
-  (``IndexFlatIP``), loaded once and searched with vectorized BLAS.
+  (exact ``IndexFlatIP`` by default, or opt-in HNSW for large corpora), loaded
+  once and searched without a Python-side scan.
 * Legacy ``SimpleVectorStore`` knowledge bases stay fully readable, so upgrading
   never breaks an existing index. Re-indexing one rebuilds it as FAISS for the
   full speed-up.
@@ -27,12 +28,16 @@ working (just without the speed-up).
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
+from fsspec.implementations.local import LocalFileSystem
 from llama_index.core import StorageContext, load_index_from_storage
 from llama_index.core.vector_stores.simple import DEFAULT_VECTOR_STORE, NAMESPACE_SEP
 import numpy as np
+
+from .config import HNSW_VECTOR_INDEX, VectorIndexConfig
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +77,40 @@ def _normalize(embedding: Any) -> list[float]:
     return vector.tolist()
 
 
+def faiss_write_index(index: Any, persist_path: str) -> None:
+    """Persist a FAISS index through a Python byte stream (Unicode-path safe).
+
+    Stock ``faiss.write_index`` is a SWIG passthrough that hands the path
+    straight to C++ ``fopen``. On Windows that is the *narrow* ANSI API, while
+    SWIG encodes the Python string as UTF-8 — so any non-ASCII path (a Chinese
+    knowledge-base name, or a ``C:\\Users\\张三`` home directory) fails to open
+    and index rebuilds crash. Serializing to bytes in memory and letting Python
+    write the file sidesteps this: CPython opens files via the wide ``_wfopen``
+    API on Windows, so Unicode paths work. The byte payload is identical to
+    ``write_index`` output, so indexes stay cross-readable with stock FAISS.
+    """
+    import faiss
+
+    payload = faiss.serialize_index(index)
+    with open(persist_path, "wb") as handle:
+        handle.write(payload.tobytes())
+
+
+def faiss_read_index(persist_path: str) -> Any:
+    """Load a FAISS index written by :func:`faiss_write_index` (or stock FAISS).
+
+    The on-disk format is identical either way, so this also reads indexes
+    persisted by an older ``faiss.write_index`` call. Reading the bytes with
+    Python ``open`` keeps the load path Unicode-safe on Windows, mirroring
+    :func:`faiss_write_index`.
+    """
+    import faiss
+
+    with open(persist_path, "rb") as handle:
+        buffer = np.frombuffer(handle.read(), dtype="uint8")
+    return faiss.deserialize_index(buffer)
+
+
 def _cosine_faiss_cls() -> Optional[type]:
     """Return a memoized FaissVectorStore subclass that ranks by cosine.
 
@@ -89,7 +128,14 @@ def _cosine_faiss_cls() -> Optional[type]:
         return None
 
     class _CosineFaissVectorStore(faiss_store_cls):  # type: ignore[valid-type, misc]
-        """FAISS store that L2-normalizes vectors for cosine ranking."""
+        """FAISS store that L2-normalizes vectors for cosine ranking.
+
+        It also overrides persistence to route through :func:`faiss_write_index`
+        / :func:`faiss_read_index` instead of the stock path-based
+        ``faiss.write_index`` / ``read_index``, which cannot handle non-ASCII
+        paths on Windows. The two concerns are independent: cosine ranking
+        shapes *what* is stored, the IO override shapes *how* it reaches disk.
+        """
 
         def add(self, nodes: list[Any], **kwargs: Any) -> list[str]:
             for node in nodes:
@@ -100,6 +146,22 @@ def _cosine_faiss_cls() -> Optional[type]:
             if getattr(query, "query_embedding", None) is not None:
                 query.query_embedding = _normalize(query.query_embedding)
             return super().query(query, **kwargs)
+
+        def persist(self, persist_path: str, fs: Any = None) -> None:
+            if fs is not None and not isinstance(fs, LocalFileSystem):
+                raise NotImplementedError("FAISS only supports local storage for now.")
+            dirpath = os.path.dirname(persist_path)
+            if dirpath:
+                os.makedirs(dirpath, exist_ok=True)
+            faiss_write_index(self._faiss_index, persist_path)
+
+        @classmethod
+        def from_persist_path(cls, persist_path: str, fs: Any = None) -> Any:
+            if fs is not None and not isinstance(fs, LocalFileSystem):
+                raise NotImplementedError("FAISS only supports local storage for now.")
+            if not os.path.exists(persist_path):
+                raise ValueError(f"No existing FAISS index found at {persist_path}.")
+            return cls(faiss_index=faiss_read_index(persist_path))
 
     _COSINE_FAISS_CLS = _CosineFaissVectorStore
     return _COSINE_FAISS_CLS
@@ -123,7 +185,23 @@ def _uniform_dimension(embeddings: Iterable[Any]) -> Optional[int]:
     return dimension if dimension and dimension > 0 else None
 
 
-def new_faiss_storage_context(dimension: int) -> Optional[StorageContext]:
+def _new_faiss_index(faiss: Any, dimension: int, config: VectorIndexConfig) -> Any:
+    """Construct a cosine-compatible FAISS index for ``config``."""
+    if config.type == HNSW_VECTOR_INDEX:
+        index = faiss.IndexHNSWFlat(
+            dimension,
+            max(1, int(config.hnsw_m)),
+            faiss.METRIC_INNER_PRODUCT,
+        )
+        index.hnsw.efConstruction = max(1, int(config.hnsw_ef_construction))
+        index.hnsw.efSearch = max(1, int(config.hnsw_ef_search))
+        return index
+    return faiss.IndexFlatIP(dimension)
+
+
+def new_faiss_storage_context(
+    dimension: int, index_config: VectorIndexConfig | None = None
+) -> Optional[StorageContext]:
     """Return a StorageContext whose default store is a fresh cosine FAISS index.
 
     Returns None when FAISS is unavailable or the dimension is invalid, so
@@ -133,11 +211,15 @@ def new_faiss_storage_context(dimension: int) -> Optional[StorageContext]:
     cosine_cls = _cosine_faiss_cls()
     if faiss is None or cosine_cls is None or dimension <= 0:
         return None
-    store = cosine_cls(faiss_index=faiss.IndexFlatIP(dimension))
+    store = cosine_cls(
+        faiss_index=_new_faiss_index(faiss, dimension, index_config or VectorIndexConfig())
+    )
     return StorageContext.from_defaults(vector_store=store)
 
 
-def storage_context_for_nodes(nodes: list[Any]) -> Optional[StorageContext]:
+def storage_context_for_nodes(
+    nodes: list[Any], index_config: VectorIndexConfig | None = None
+) -> Optional[StorageContext]:
     """Choose the write-time StorageContext for a set of embedded nodes.
 
     Returns a FAISS-backed context when every node shares one embedding
@@ -150,7 +232,7 @@ def storage_context_for_nodes(nodes: list[Any]) -> Optional[StorageContext]:
     dimension = _uniform_dimension(getattr(node, "embedding", None) for node in nodes)
     if dimension is None:
         return None
-    return new_faiss_storage_context(dimension)
+    return new_faiss_storage_context(dimension, index_config)
 
 
 def detect_backend(storage_dir: Path) -> str:
@@ -197,6 +279,8 @@ __all__ = [
     "DEFAULT_VECTOR_STORE_FILENAME",
     "detect_backend",
     "faiss_available",
+    "faiss_read_index",
+    "faiss_write_index",
     "load_index",
     "new_faiss_storage_context",
     "storage_context_for_nodes",
