@@ -11,9 +11,8 @@ import {
   type ReactNode,
 } from "react";
 import { useAppShell } from "@/context/AppShellContext";
-import { BookText, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { BrandGlyph } from "@/components/common/BrandIcon";
 import OrganizedSessionList from "@/components/courses/OrganizedSessionList";
 import SessionList from "@/components/SessionList";
 import { useSidebarDrawer } from "@/components/layout/AppShell";
@@ -33,9 +32,6 @@ import {
   readSessionOrder,
   writeSessionOrder,
 } from "@/lib/sidebar-layout";
-
-const GITHUB_REPO_URL = "https://github.com/HKUDS/DeepTutor";
-const DOCS_URL = "https://deeptutor.info/";
 
 interface SidebarShellProps {
   sessions?: SessionSummary[];
@@ -215,35 +211,6 @@ export function SidebarShell({
             );
           })}
           {renderedFooter}
-          <a
-            href={DOCS_URL}
-            target="_blank"
-            rel="noreferrer noopener"
-            title={t("Docs") as string}
-            aria-label={t("Docs") as string}
-            className="mt-1 flex h-9 w-9 items-center justify-center rounded-xl text-[var(--muted-foreground)]/70 transition-colors hover:bg-[var(--background)]/50 hover:text-[var(--foreground)]"
-          >
-            <BookText
-              size={15}
-              strokeWidth={1.8}
-              className="text-blue-600 dark:text-blue-400"
-            />
-          </a>
-          <a
-            href={GITHUB_REPO_URL}
-            target="_blank"
-            rel="noreferrer noopener"
-            title="GitHub"
-            aria-label="GitHub"
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--muted-foreground)]/70 transition-colors hover:bg-[var(--background)]/50 hover:text-[var(--foreground)]"
-          >
-            <BrandGlyph
-              namespace="mcp"
-              id="github"
-              size={15}
-              className="text-[#181717] dark:text-white"
-            />
-          </a>
           <VersionBadge collapsed />
         </div>
       </aside>
@@ -371,35 +338,6 @@ export function SidebarShell({
         {renderedFooter}
         <div className="mt-0.5 flex items-center gap-0.5">
           <VersionBadge />
-          <a
-            href={DOCS_URL}
-            target="_blank"
-            rel="noreferrer noopener"
-            title={t("Docs") as string}
-            aria-label={t("Docs") as string}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--muted-foreground)]/55 transition-colors hover:bg-[var(--background)]/50 hover:text-[var(--muted-foreground)]"
-          >
-            <BookText
-              size={15}
-              strokeWidth={1.9}
-              className="text-blue-600 dark:text-blue-400"
-            />
-          </a>
-          <a
-            href={GITHUB_REPO_URL}
-            target="_blank"
-            rel="noreferrer noopener"
-            title="GitHub"
-            aria-label="GitHub"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--muted-foreground)]/55 transition-colors hover:bg-[var(--background)]/50 hover:text-[var(--muted-foreground)]"
-          >
-            <BrandGlyph
-              namespace="mcp"
-              id="github"
-              size={15}
-              className="text-[#181717] dark:text-white"
-            />
-          </a>
         </div>
       </div>
     </aside>

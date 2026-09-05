@@ -165,13 +165,9 @@ test("only non-terminal jobs remain active", () => {
   assert.equal(updateJobIsActive("failed"), false);
 });
 
-test("sidebar presents the version as a synced status dot and branded footer marks", () => {
+test("sidebar presents the version as a synced status dot", () => {
   const badge = readFileSync(
     path.join(process.cwd(), "components", "sidebar", "VersionBadge.tsx"),
-    "utf8",
-  );
-  const shell = readFileSync(
-    path.join(process.cwd(), "components", "sidebar", "SidebarShell.tsx"),
     "utf8",
   );
 
@@ -180,6 +176,4 @@ test("sidebar presents the version as a synced status dot and branded footer mar
   assert.match(badge, /bg-emerald-500/);
   assert.match(badge, /bg-amber-500/);
   assert.match(badge, /bg-red-500/);
-  assert.match(shell, /<BrandGlyph[\s\S]*?id="github"/);
-  assert.match(shell, /text-blue-600 dark:text-blue-400/);
 });

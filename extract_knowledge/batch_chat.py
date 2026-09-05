@@ -48,7 +48,7 @@ async def chat_via_websocket(message: str):
             "capability": "chat",
             "session_id": None,
             "language": "zh",
-            "knowledge_bases": ["知识清单"],
+            #"knowledge_bases": ["知识清单"],
             "llmSelection": {
                 "profile_id": "llm-profile-default",
                 "model_id": "llm-model-1783146188844"
