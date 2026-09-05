@@ -436,7 +436,16 @@ def test_source_frontend_dev_mode_is_explicit_and_skips_production_build(
     )
 
     assert runtime.kind == "source"
-    assert runtime.command == ["/bin/npm", "run", "dev", "--", "--port", "3782"]
+    assert runtime.command == [
+        "/bin/npm",
+        "run",
+        "dev",
+        "--",
+        "--hostname",
+        "0.0.0.0",
+        "--port",
+        "3782",
+    ]
 
 
 def test_source_production_build_is_reused_until_an_input_changes(

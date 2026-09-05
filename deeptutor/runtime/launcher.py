@@ -819,7 +819,18 @@ def _resolve_frontend(
                 standalone,
             )
         return FrontendRuntime(
-            "source", [npm, "run", "dev", "--", "--port", str(frontend_port)], source
+            "source",
+            [
+                npm,
+                "run",
+                "dev",
+                "--",
+                "--hostname",
+                "0.0.0.0",
+                "--port",
+                str(frontend_port),
+            ],
+            source,
         )
 
     raise SystemExit(

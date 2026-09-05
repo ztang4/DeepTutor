@@ -44,6 +44,61 @@ function localNetworkHosts() {
   return hosts;
 }
 
+function hostFromOrigin(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    return new URL(raw.includes("://") ? raw : `http://${raw}`).hostname
+      .toLowerCase()
+      .replace(/\.$/, "");
+  } catch {
+    return "";
+  }
+}
+
+function splitOriginList(value) {
+  if (Array.isArray(value)) return value.flatMap(splitOriginList);
+  return String(value || "")
+    .split(/[,;\n]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+/** Public / tunnel hosts from settings and env so remote access is not blocked. */
+function configuredRemoteHosts() {
+  const hosts = [];
+  for (const extra of [
+    process.env.DEEPTUTOR_ALLOWED_DEV_ORIGINS,
+    process.env.CORS_ORIGINS,
+    process.env.CORS_ORIGIN,
+    SYSTEM_SETTINGS.cors_origin,
+    SYSTEM_SETTINGS.cors_origins,
+    SYSTEM_SETTINGS.next_public_api_base_external,
+    SYSTEM_SETTINGS.next_public_api_base,
+  ]) {
+    for (const item of splitOriginList(extra)) {
+      const host = hostFromOrigin(item);
+      if (host) hosts.push(host);
+    }
+  }
+  return [...new Set(hosts)];
+}
+
+// Wildcard suffixes Next.js can match. A public IP still has to be listed
+// exactly (add it under Settings → Network → CORS origins).
+const TUNNEL_WILDCARDS = [
+  "*.ngrok.io",
+  "*.ngrok-free.app",
+  "*.ngrok.app",
+  "*.cpolar.cn",
+  "*.cpolar.top",
+  "*.cpolar.io",
+  "*.trycloudflare.com",
+  "*.loca.lt",
+  "*.serveo.net",
+  "*.ts.net",
+];
+
 const SETTINGS_DIR = path.resolve(__dirname, "..", "data", "user", "settings");
 const SYSTEM_SETTINGS = readJsonFile(path.join(SETTINGS_DIR, "system.json"));
 const AUTH_SETTINGS = readJsonFile(path.join(SETTINGS_DIR, "auth.json"));
@@ -145,14 +200,18 @@ const nextConfig = {
   // allow-list. Without it, browsing http://127.0.0.1:<port>/ against a dev
   // server bound to localhost silently breaks client hydration — the SSR HTML
   // renders, but no React event handlers or effects ever attach.
-  // The same applies to a phone or tablet on the LAN: `next dev` advertises a
-  // "Network: http://<lan-ip>:<port>" address, and that host has to be on the
-  // list too or the device gets the identical hydrated-nothing shell — a
-  // top bar with an empty page under it. Detected rather than hard-coded so it
-  // follows whatever network this machine is on. Dev-only: `allowedDevOrigins`
-  // has no effect on `next build`/`next start`, and anyone who can reach the
-  // dev server on these addresses is already inside the LAN.
-  allowedDevOrigins: ["127.0.0.1", ...localNetworkHosts()],
+  // The same applies to a phone or tablet on the LAN, and to remote access via
+  // a public IP, domain, or tunnel (cpolar / ngrok / Cloudflare). Detected LAN
+  // addresses plus configured CORS / public API hosts; tunnel wildcards cover
+  // the usual reverse-proxy hostnames. Dev-only: `allowedDevOrigins` has no
+  // effect on `next build`/`next start`.
+  allowedDevOrigins: [
+    "localhost",
+    "127.0.0.1",
+    ...localNetworkHosts(),
+    ...configuredRemoteHosts(),
+    ...TUNNEL_WILDCARDS,
+  ],
 
   // Turbopack configuration (used when running `npm run dev:turbo`)
   turbopack: {

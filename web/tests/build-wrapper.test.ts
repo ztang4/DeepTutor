@@ -62,3 +62,11 @@ test("the standalone bundle is rooted where the Python launcher expects it", () 
   assert.match(source, /outputFileTracingRoot:\s*__dirname/);
   assert.match(source, /tsconfigPath:\s*process\.env\.DEEPTUTOR_NEXT_TSCONFIG/);
 });
+
+test("dev origins include LAN hosts and configured remote / tunnel hosts", () => {
+  const source = read("next.config.js");
+  assert.match(source, /function configuredRemoteHosts/);
+  assert.match(source, /DEEPTUTOR_ALLOWED_DEV_ORIGINS/);
+  assert.match(source, /\*\.cpolar\.cn/);
+  assert.match(source, /allowedDevOrigins:/);
+});
