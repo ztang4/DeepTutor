@@ -14,7 +14,7 @@ const readWebFile = (...parts: string[]) =>
 test("settings navigation: every label targets the unified settings document", () => {
   assert.equal(settingsAnchorHref("overview"), "/settings#overview");
   assert.equal(settingsAnchorHref("llm"), "/settings#llm");
-  assert.equal(settingsAnchorHref("about"), "/settings#about");
+  assert.equal(settingsAnchorHref("memory"), "/settings#memory");
 
   const nav = readWebFile("components", "settings", "SettingsNav.tsx");
   assert.match(nav, /settingsAnchorHref\(['"]overview['"]\)/);
@@ -22,7 +22,7 @@ test("settings navigation: every label targets the unified settings document", (
   assert.match(nav, /settingsAnchorHref\(leaf\.key\)/);
 });
 
-test("settings page: stacks every first-level section from overview to about", () => {
+test("settings page: stacks every first-level section from overview to memory", () => {
   const page = readWebFile("app", "(utility)", "settings", "page.tsx");
   const keys = [
     "overview",
@@ -35,7 +35,6 @@ test("settings page: stacks every first-level section from overview to about", (
     "learner-profile",
     "guardian",
     "memory",
-    "about",
   ];
 
   let previousIndex = -1;
@@ -109,13 +108,12 @@ test("settings page: heavy sections are split and mounted on demand", () => {
   assert.match(chat, /deferSections/);
 });
 
-test("sidebar version badge targets the canonical in-document About section", () => {
+test("sidebar version badge does not open a settings section", () => {
   const source = readWebFile("components", "sidebar", "VersionBadge.tsx");
 
-  assert.match(source, /href="\/settings#about"/);
-  assert.match(source, /scroll={false}/);
-  assert.match(source, /requestSettingsSection\(["']about["']\)/);
+  assert.doesNotMatch(source, /\/settings#about/);
   assert.doesNotMatch(source, /\/settings\/about/);
+  assert.doesNotMatch(source, /requestSettingsSection/);
 });
 
 test("settings toolbar: resolves storage paths while scrolling the unified page", () => {

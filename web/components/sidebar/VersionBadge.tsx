@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -11,10 +9,6 @@ import {
   type AppUpdateStatus,
 } from "@/lib/app-update";
 import { normalizeVersionTag } from "@/lib/version";
-import {
-  requestSettingsSection,
-  scrollToSettingsSection,
-} from "@/features/settings/navigation/settings-scroll";
 
 interface VersionBadgeProps {
   /** Render the compact variant for the collapsed sidebar (currently hidden). */
@@ -23,7 +17,6 @@ interface VersionBadgeProps {
 
 export function VersionBadge({ collapsed = false }: VersionBadgeProps) {
   const { t } = useTranslation();
-  const pathname = usePathname();
   const [status, setStatus] = useState<AppUpdateStatus | null>(null);
   const [error, setError] = useState("");
 
@@ -74,27 +67,16 @@ export function VersionBadge({ collapsed = false }: VersionBadgeProps) {
             };
 
   return (
-    <Link
-      href="/settings#about"
-      scroll={false}
-      onClick={(event) => {
-        if (pathname !== "/settings") return;
-        event.preventDefault();
-        window.history.replaceState(null, "", "/settings#about");
-        scrollToSettingsSection("about", "auto");
-        requestSettingsSection("about");
-      }}
+    <div
       title={`${displayTag} · ${state.label}`}
       aria-label={`${displayTag} · ${state.label}`}
-      className="group/ver flex min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-1.5 font-serif text-[14px] font-semibold tabular-nums tracking-[-0.025em] text-[var(--foreground)]/80 transition-colors hover:bg-[var(--background)]/50 hover:text-[var(--foreground)]"
+      className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-1.5 font-serif text-[14px] font-semibold tabular-nums tracking-[-0.025em] text-[var(--foreground)]/80"
     >
       <span
         aria-hidden="true"
         className={`h-1.5 w-1.5 shrink-0 rounded-full transition-colors ${state.dot}`}
       />
-      <span className="truncate leading-none decoration-[var(--muted-foreground)]/40 decoration-dotted underline-offset-[3px] group-hover/ver:underline">
-        {displayTag}
-      </span>
-    </Link>
+      <span className="truncate leading-none">{displayTag}</span>
+    </div>
   );
 }

@@ -50,10 +50,6 @@ const MemorySettingsPage = dynamic(
   () => import("@/features/settings/sections/MemorySettingsSection"),
   { loading: sectionLoading },
 );
-const AboutSettingsPage = dynamic(
-  () => import("@/features/settings/sections/AboutSettingsSection"),
-  { loading: sectionLoading },
-);
 
 const childKeys = (key: string) =>
   SETTINGS_CATEGORIES.find((category) => category.key === key)?.children?.map(
@@ -83,11 +79,10 @@ const SETTINGS_SECTIONS = [
   { key: "learner-profile", Component: LearnerProfileSettingsPage },
   { key: "guardian", Component: GuardianSettingsPage },
   { key: "memory", Component: MemorySettingsPage },
-  { key: "about", Component: AboutSettingsPage },
 ] as const;
 
 /**
- * Settings is one document: users can read it from Overview to About with a
+ * Settings is one document: users can read it from Overview to Memory with a
  * normal scroll, while the persistent navigator links to these same anchors.
  * Every navigator target is an anchor in this document; no duplicate leaf
  * routes or redirect aliases remain.

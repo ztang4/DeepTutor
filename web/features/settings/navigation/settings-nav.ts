@@ -10,7 +10,6 @@ import {
   Database,
   FileScan,
   Image as ImageIcon,
-  Info,
   KeyRound,
   Library,
   ListChecks,
@@ -479,16 +478,6 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
     },
     icon: BrainCircuit,
     href: "/settings#memory",
-  },
-  {
-    key: "about",
-    label: { zh: "关于", en: "About" },
-    blurb: {
-      zh: "版本、更新与项目资源",
-      en: "Version, updates, and project resources",
-    },
-    icon: Info,
-    href: "/settings#about",
   },
 ];
 
