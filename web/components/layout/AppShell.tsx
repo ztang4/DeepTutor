@@ -113,18 +113,14 @@ export default function AppShell({ sidebar, children }: AppShellProps) {
             <Link href="/" className="flex items-center gap-1.5">
               <Image
                 src="/logo.png"
-                alt="DeepTutor"
+                alt="知育"
                 width={20}
                 height={20}
-                className="h-5 w-5"
+                className="h-5 w-5 rounded-md"
               />
-              <Image
-                src="/banner.png"
-                alt="DeepTutor"
-                width={897}
-                height={236}
-                className="h-[18px] w-auto"
-              />
+              <span className="text-base font-black tracking-wide text-green-800">
+                知育
+              </span>
             </Link>
           </div>
 
